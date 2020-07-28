@@ -84,9 +84,13 @@ export class Component {
   setState(state) {
     let merge = (oldState, newState) => {
       for (let p in newState) {
-        if (typeof newState[p] === 'object') {
+        if (typeof newState[p] === 'object' && newState[p] !== null) {
           if (typeof oldState[p] !== 'object') {
-            oldState[p] = {};
+            if (newState[p] instanceof Array) {
+              oldState[p] = [];
+            } else {
+              oldState[p] = {};
+            }
           }
           merge(oldState[p], newState[p]);
         } else {
@@ -95,7 +99,7 @@ export class Component {
       }
     };
 
-    if (this.state && state) {
+    if (!this.state && state) {
       this.state = {};
     }
 
@@ -123,6 +127,9 @@ export let ToyReact = {
         if (typeof child === 'object' && child instanceof Array) {
           appendChildren(child);
         } else {
+          if (child === null || child === void 0) {
+            child = '';
+          }
           if (
             !(child instanceof Component) &&
             !(child instanceof ElementWrapper) &&
