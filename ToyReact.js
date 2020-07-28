@@ -31,6 +31,7 @@ class ElementWrapper {
   }
 
   mountTo(range) {
+    this.range = range;
     range.deleteContents();
     let element = document.createElement(this.type);
 
@@ -61,14 +62,22 @@ class ElementWrapper {
 
     range.insertNode(element);
   }
+
+  get vdom() {
+    return this;
+  }
 }
 
 class TextWrapper {
   constructor(type) {
     this.root = document.createTextNode(type);
+    this.type = '#text';
+    this.props = Object.create(null);
+    this.children = [];
   }
 
   mountTo(range) {
+    this.range = range;
     range.deleteContents();
     range.insertNode(this.root);
   }
@@ -78,6 +87,10 @@ export class Component {
   constructor() {
     this.children = [];
     this.props = Object.create(null);
+  }
+
+  get type() {
+    return this.constructor.name;
   }
 
   setAttribute(name, value) {
@@ -92,18 +105,99 @@ export class Component {
 
   update() {
     // 站位符 （确保删除后 range 没有变化）
-    let placholder = document.createComment('placholder');
-    let range = document.createRange();
-    range.setStart(this.range.endContainer, this.range.endOffset);
-    range.setEnd(this.range.endContainer, this.range.endOffset);
+    // let placholder = document.createComment('placholder');
+    // let range = document.createRange();
+    // range.setStart(this.range.endContainer, this.range.endOffset);
+    // range.setEnd(this.range.endContainer, this.range.endOffset);
 
-    range.insertNode(placholder);
+    // range.insertNode(placholder);
 
-    this.range.deleteContents();
+    // this.range.deleteContents();
     let vdom = this.render();
-    vdom.mountTo(this.range);
+
+    // 比较 type props 和 children
+    if (this.oldVdom) {
+      let isSameNode = (node1, node2) => {
+        if (node1.type !== node2.type) {
+          return false;
+        }
+
+        for (let name in node1.props) {
+          if (
+            typeof node1.props[name] === 'object' &&
+            typeof node2.props[name] === 'object' &&
+            JSON.stringify(
+              node1.props[name] === JSON.stringify(node2.props[name])
+            )
+          ) {
+            continue;
+          }
+          if (node1.props[name] !== node2.props[name]) {
+            return false;
+          }
+        }
+
+        // 属性个数不一样
+        if (
+          Object.keys(node1.props).length !== Object.keys(node2.props).length
+        ) {
+          return false;
+        }
+
+        return true;
+      };
+
+      let isSameTree = (node1, node2) => {
+        if (!isSameNode(node1, node2)) {
+          return false;
+        }
+
+        if (node1.children.length !== node2.children.length) {
+          return false;
+        }
+
+        for (let i = 0; i < node1.children.length; i++) {
+          // 不对，需要key去比较，万一children 的顺序不一致
+          if (!isSameTree(node1.children[i], node2.children[i])) {
+            return false;
+          }
+
+          return true;
+        }
+      };
+
+      let replace = (newTree, oldTree) => {
+        if (isSameTree(newTree, oldTree)) {
+          return;
+        }
+
+        // 根节点不相同
+        if (!isSameNode(newTree, oldTree)) {
+          newTree.mountTo(oldTree.range);
+        } else {
+          // 比较 children
+          for (let i = 0; i < newTree.children.length; i++) {
+            replace(newTree.children[i], oldTree.children[i]);
+          }
+        }
+      };
+
+      console.log('old', this.oldVdom);
+      console.log('new', vdom);
+
+      replace(vdom, this.oldVdom);
+    } else {
+      vdom.mountTo(this.range);
+    }
+
+    this.oldVdom = vdom;
+    // vdom.mountTo(this.range);
 
     // placholder.parentNode.removeChild(placholder)
+  }
+
+  get vdom() {
+    return this.render().vdom;
   }
 
   appendChild(vchild) {
