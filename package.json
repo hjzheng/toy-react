@@ -21,6 +21,6 @@
     "@babel/plugin-transform-react-jsx": "^7.10.4",
     "@babel/preset-env": "^7.10.4",
     "babel-loader": "^8.1.0",
-    "webpack": "^4.44.0"
+    "webpack": "^5.75.0"
   }
 }
